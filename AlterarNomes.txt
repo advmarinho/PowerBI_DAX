@@ -1,0 +1,117 @@
+let
+    Fonte = Csv.Document(File.Contents("C:\_RPA\_Nova Folha\BI\0SRDv5.2025HalfBI.csv"),[Delimiter=";", Columns=45, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"1-Evento_HAOC", type text}, {"2-Descricao_Evento", type text}, {"3-Matricula", Int64.Type}, {"4-Nome", type text}, {"5-Admissao", Int64.Type}, {"6-Filial", Int64.Type}, {"7-Tipo_Salario", type text}, {"8-Competencia", Int64.Type}, {"9-Valor", type number}, {"10-Valor_Abs", type number}, {"Matricula", Int64.Type}, {"Nome", type text}, {"Salario", type number}, {"CargaHoraria", type number}, {"11-Tipo Verba", type text}, {"Vinculo", type text}, {"Admissao", Int64.Type}, {"Demissao", type text}, {"Situação", type text}, {"Status", type text}, {"Funcao", type text}, {"CPF", type text}, {"Ano", Int64.Type}, {"Nr Parcelas", Int64.Type}, {"CLC", type text}, {"VB HAOC*", type text}, {"Tipo", type text}, {"Posto Nome", type text}, {"DtPagto", Int64.Type}, {"DtRe", Int64.Type}, {"Centro Custo", Int64.Type}, {"Unidade", type text}, {"MarcaPonto", type text}, {"Sindicato", type text}, {"12-Cod Periodo", Int64.Type}, {"CodPosto", type text}, {"Roteiro", type text}, {"Mat2", Int64.Type}, {"Tipo Contrato", type text}, {"Custo Empresa", type text}, {"CR", type text}, {"Carreira", type text}, {"Xdeb_e_Xcred", type text}, {"DIRETORIA", type text}, {"Chefia", type text}}),
+
+    SubstituicoesDiretoria = {
+        {"0", "Dir. Exec. Pessoas, Sust.Resp.Social"},
+        {"DIRETORIA EXECUTIVA ASSISTENCIAL E ENSINO", "Dir. Exec. Assistencial e Ensino"},
+        {"DIRETORIA EXECUTIVA OPERACOES", "Dir. Exec. Operacoes"},
+        {"DIRETORIA EXECUTIVA MEDICA, QUALIDADE E PESQUISA", "Dir. Exec. Medica, Qualidade e Pesquisa"},
+        {"DIRETORIA EXECUTIVA FINANCAS, TI e SUPRIMENTOS", "Dir. Exec. Financas, TI e Suprimentos"},
+        {"DIRETORIA EXECUTIVA PRESIDENCIA", "Dir. Exec. Presidencia"},
+        {"DIRETORIA EXECUTIVA PESSOAS, SUSTENTABILIDADE E RESPONSABILIDADE SOCIAL", "Dir. Exec. Pessoas, Sust.Resp.Social"},
+        {"DIRETORIA EXECUTIVA FINANCAS, TI, INFRA E SUPRIMENTOS", "Dir. Exec. Financas, TI e Suprimentos"},
+        {"DIRETORIA EXECUTIVA FINANCAS, TI E SUPRIMENTOS", "Dir. Exec. Financas, TI e Suprimentos"},
+        {"DIRETORIA EXECUTIVA SUSTENTABILIDADE E RESPONSABILIDADE SOCIAL", "Dir. Exec. Pessoas, Sust.Resp.Social"},
+        {"DIRETORIA EXECUTIVA GENTE E GESTAO", "Dir. Exec. Pessoas, Sust.Resp.Social"},
+        {"DIRETORIA EXECUTIVA EDUCACAO, PESQUISA, INOVACAO E SAUDE DIGITAL", "Dir. Exec. Medica, Qualidade e Pesquisa"},
+        {"DIRETORIA EXECUTIVA MEDICA", "Dir. Exec. Medica"},
+        {"DIRETORIA EXECUTIVA ASSISTENCIAL", "Dir. Exec. Assistencial e Ensino"},
+        {"DIRETORIA EXECUTIVA NEGOCIOS, MARKETING E ESTRATEGIA", "Dir. Exec. Negocios, Marketing e Estrategia"},
+        {"DIRETORIA SUPRIMENTOS", "Dir. Suprimentos"},
+        {"DIRETORIA JURIDICA E COMPLIANCE", "Dir. Juridica e Compliance"}
+    },
+
+    SubstituicoesSituacao = {
+        {"0", "Pensao"},
+        {"Acidente Trabalho", "Lic.Medica"},
+        {"APOSENTADOS INVALIDEZ", "Aposentado"},
+        {"Auxilio Doenca", "Lic.Medica"},
+        {"Contrato Suspenso", "Contrato Suspenso"},
+        {"Demitido", "Demitido"},
+        {"Ferias", "Trabalhando"},
+        {"Lic.Medica Dias/Hrs.", "Lic.Medica"},
+        {"Licença Maternidade", "Lic.Medica"},
+        {"Licença Maternidade Estendida", "Lic.Medica"},
+        {"Trabalhando", "Trabalhando"}
+    },
+
+    AplicaDiretorias = List.Accumulate(SubstituicoesDiretoria, #"Tipo Alterado", (estado, par) =>
+        Table.ReplaceValue(estado, par{0}, par{1}, Replacer.ReplaceText, {"DIRETORIA"})
+    ),
+
+    
+    SubstituicoesUnidade = {
+        {"CAMPO BELO", "Campo Belo"},
+        {"CORPORATIVO", "Paulista"},
+        {"CORPORATIVO - FINANÇAS, TI, INFRA E SUPRIMENTOS", "Paulista"},
+        {"CORPORATIVO - GENTE & GESTÃO", "Paulista"},
+        {"CORPORATIVO - INOVACAO E SAUDE DIGITAL", "Paulista"},
+        {"CORPORATIVO - NEGÓCIOS, MARKETING E ESTRATÉGIA", "Paulista"},
+        {"CORPORATIVO - OPERACOES", "Paulista"},
+        {"CORPORATIVO - RESPONSABILIDADE SOCIAL", "Paulista"},
+        {"DIGESTIVA", "Paulista"},
+        {"GSP", "Paulista"},
+        {"HOSPITAL VERGUEIRO", "Vergueiro"},
+        {"IPE", "Paulista"},
+        {"MATRICIAL - ASSISTENCIAL", "Paulista"},
+        {"MATRICIAL - MÉDICO", "Paulista"},
+        {"ONCOLOGIA", "Paulista"},
+        {"PAULISTA", "Paulista"},
+        {"RESP. SOCIAL", "Resp. Social"}
+    },
+
+    AplicaUnidade = List.Accumulate(SubstituicoesUnidade, AplicaDiretorias, (estado, par) =>
+        Table.ReplaceValue(estado, par{0}, par{1}, Replacer.ReplaceText, {"Unidade"})
+    ),
+
+    
+    SubstituicoesSindicato = {
+        {"SINDICATO DOS EMPREGADOS EM ESTABELECIMENTOS DE SERVICOS DE SAUDE SAO PAULO", "Sind.Preponderante"},
+        {"SINDICATO DOS FISIOTERAPEUTAS E TERAPEUTAS OCUPACIONAIS -  SAO PAULO", "Sind. Fisioterapeutas"},
+        {"SINDICATO DOS MEDICOS DE SAO PAULO", "Sind. Médicos"},
+        {"SINDICATO DOS ENFERMEIROS DE SAO PAULO", "Sind. Enfermeiros"},
+        {"SINDICATO DOS TECNICOS E AUXILIARES EM RADIOLOGIA DE SAO PAULO", "Sind. Radiologistas"},
+        {"SINDICATO DOS FARMACEUTICOS DE SAO PAULO", "Sind. Farmaceuticos"},
+        {"SINDICATO DOS NUTRICIONISTAS DE SAO PAULO", "Sind. Nutricionista"},
+        {"SINDICATO DOS TECNICO EM NUTRICAO DE SAO PAULO", "Sind. Téc. Nutricionista"},
+        {"S.Tec.Seg.Trab.E.SP", "Sind. Tec. Segurança"},
+        {"SINDICATO DE  PSICOLOGIA  DE SAO PAULO", "Sind. Psicologia"},
+        {"ESTAGIARIOS", "Estagários"},
+        {"APRENDIZES", "Aprendizes"},
+        {"VOLKSWAGEM", "Sind. Volkswagem"},
+        {"APRENDIZES - II", "Aprendizes"},
+        {"SINDICATO DOS PROFESSORES DE SAO PAULO", "Sind. Professores"},
+        {"SINDICATO DOS EMPREGADOS - PREPONDERANTE DE S.CTBA (SÃO JOSÉ DOS PINHAIS)", "Sind."},
+        {"SINDICATO DOS EMPREGADOS - PREPONDERANTE ABC (SÃO BERNARDO)", "Sind."},
+        {"SINDICATO DOS EMPREGADOS - PREPONDERANTE (TAUBATÉ)", "Sind."},
+        {"Sind.Bibliotecários E.S.Paulo", "Sind."}
+    },
+
+    AplicaSindicato = List.Accumulate(SubstituicoesSindicato, AplicaUnidade, (estado, par) =>
+        Table.ReplaceValue(estado, par{0}, par{1}, Replacer.ReplaceText, {"Sindicato"})
+    ),
+
+    AplicaSituacao = List.Accumulate(SubstituicoesSituacao, AplicaSindicato, (estado, par) =>
+
+
+        Table.ReplaceValue(estado, par{0}, par{1}, Replacer.ReplaceText, {"Situação"})
+    )
+,   
+DatasConvertidas = Table.TransformColumns(AplicaSituacao, {
+    {"5-Admissao", each Date.AddDays(#date(1899, 12, 30), _), type date},
+    {"Admissao", each Date.AddDays(#date(1899, 12, 30), _), type date},
+    {"8-Competencia", each Date.AddDays(#date(1899, 12, 30), _), type date},
+    {"DtPagto", each Date.AddDays(#date(1899, 12, 30), _), type date},
+    {"DtRe", each Date.AddDays(#date(1899, 12, 30), _), type date}
+}),
+
+DemissaoCorrigida = Table.TransformColumns(DatasConvertidas, {
+    {"Demissao", each try 
+        if Text.From(_) = "00/00/0000" then null 
+        else try Date.From(_) otherwise Date.AddDays(#date(1899, 12, 30), Number.From(_)) 
+        otherwise null, type nullable date}
+})
+in
+    DemissaoCorrigida
